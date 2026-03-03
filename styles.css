@@ -1084,6 +1084,34 @@ html, body {
 .toast.unlock    { border-color: var(--brass); color: var(--brass); }
 .toast.secret    { border-color: #6080A0; color: #80A0C0; }
 
+/* ── Day progress bar (top of ceiling) ─────── */
+
+.ceiling-day::after {
+  content: attr(data-dots);
+  display: inline-block;
+  margin-left: 10px;
+  letter-spacing: 0.1em;
+  color: var(--brass-dim);
+}
+
+/* ── Open doors button variant ──────────────── */
+
+#btn-open-doors {
+  border-color: var(--amber-dim);
+  color: var(--amber-dim);
+}
+
+#btn-open-doors:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* ── Boarding panel floor tint ──────────────── */
+
+.boarding-header {
+  transition: background 0.4s, border-color 0.4s;
+}
+
 /* ── Utility ───────────────────────────────── */
 
 ::-webkit-scrollbar { width: 4px; }

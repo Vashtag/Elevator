@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────
 
 import { FLOORS, CARDS, DAYS } from './data.js';
+import { AudioManager } from './audio.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -45,6 +46,7 @@ export class UIManager {
     this.engine = engine;
     this._pendingCards = [];
     this._boardingFloor = null;
+    this.audio = new AudioManager();
     this._bind();
     this._wireEngineEvents();
   }
@@ -55,30 +57,38 @@ export class UIManager {
     const { engine } = this;
 
     engine.on('dayStarted', ({ dayIndex, day }) => {
+      this.audio.setDay(dayIndex);
+      this.audio.startAmbient();
       this._renderShiftUI();
       setScreen('shift');
     });
 
-    engine.on('moved', ({ floor, dir }) => {
+    engine.on('moved', ({ floor, dir, cost }) => {
       el('ind-floor').textContent = floorLabel(floor);
       el('ind-dir').textContent = dir;
       this._updateShiftStats();
       this._renderPanel();
       this._renderCabPassengers();
+      this._updateGoButton(null);  // clear pending selection status
+      const moveSec = Math.max(0.3, (cost ?? 1) * 0.25);
+      this.audio.playMovement(moveSec);
     });
 
     engine.on('doorsOpened', ({ floor, exiting, waiting, floorData }) => {
       this._boardingFloor = floor;
       this._renderBoardingScreen(floor, exiting, waiting, floorData);
+      this.audio.playDing();
       setScreen('boarding');
     });
 
     engine.on('doorsClosed', () => {
       setScreen('shift');
       this._boardingFloor = null;
+      this._renderPanel();          // update waiting dots after boarding
       this._renderCabPassengers();
       this._renderManifest();
       this._updateShiftStats();
+      this._updateGoButton(null);   // reset status line
     });
 
     engine.on('passengerBoarded', () => {
@@ -89,11 +99,13 @@ export class UIManager {
 
     engine.on('passengerRefused', () => {
       this._refreshBoardingScreen();
+      this._renderManifest();
     });
 
-    engine.on('passengerDelivered', () => {
+    engine.on('passengerDelivered', ({ result }) => {
       this._renderManifest();
       this._updateShiftStats();
+      if (result && result.tip > 0) this.audio.playTip();
     });
 
     engine.on('log', ({ type, message }) => {
@@ -103,6 +115,7 @@ export class UIManager {
     engine.on('complaintFiled', ({ total }) => {
       this._renderComplaints(total);
       showToast('Complaint filed.', 'complaint');
+      this.audio.playComplaint();
     });
 
     engine.on('shiftForcedEnd', () => {
@@ -112,6 +125,7 @@ export class UIManager {
     engine.on('secretLearned', ({ archetypeId, text }) => {
       showToast(`Learned: ${text}`, 'secret', 4000);
       this._renderManifest();
+      this.audio.playSecret();
     });
 
     engine.on('floorUnlocked', ({ floor }) => {
@@ -146,6 +160,7 @@ export class UIManager {
 
     engine.on('weekEnded', (data) => {
       this._renderWeekEnd(data);
+      this.audio.stopAll();
       setTimeout(() => setScreen('week-end'), 600);
     });
 
@@ -158,6 +173,7 @@ export class UIManager {
 
   _bind() {
     el('btn-start').addEventListener('click', () => {
+      this.audio.init(); // must be in a user gesture
       this.engine.startRun();
     });
 
@@ -183,6 +199,7 @@ export class UIManager {
     });
 
     el('btn-again').addEventListener('click', () => {
+      this.audio.init();
       this.engine.startRun();
     });
   }
@@ -259,7 +276,15 @@ export class UIManager {
 
     if (!selectedFloor) {
       btn.disabled = true;
-      el('floor-status').innerHTML = 'Select a floor on the panel to move.';
+      // Check if anything is waiting at current floor
+      const here = (snap.waitingAt[snap.floor] ?? [])
+        .filter(p => !p.inCab && !p.delivered && !p.abandoned);
+      if (here.length > 0) {
+        el('floor-status').innerHTML =
+          `<span class="highlight">${here.length} waiting here.</span> Press OPEN DOORS.`;
+      } else {
+        el('floor-status').innerHTML = 'Select a floor on the panel.';
+      }
       return;
     }
 
@@ -410,8 +435,18 @@ export class UIManager {
     const snap = this.engine.snapshot();
 
     // Header
-    el('boarding-floor-num').textContent = `FLOOR ${floorLabel(floor)}`;
+    const floorNum = floor === 'basement' ? 'BASEMENT' : `FLOOR ${floorLabel(floor)}`;
+    el('boarding-floor-num').textContent = floorNum;
     el('boarding-floor-name').textContent = floorData ? floorData.name : `Floor ${floorLabel(floor)}`;
+
+    // Apply floor colour to boarding header and diorama
+    if (floorData) {
+      const headerEl = el('boarding-floor-num').closest('.boarding-header');
+      if (headerEl) {
+        headerEl.style.borderBottom = `1px solid ${floorData.textColor ?? '#555'}44`;
+        headerEl.style.background = floorData.color ?? '';
+      }
+    }
 
     // Diorama description
     el('boarding-diorama').textContent = floorData
@@ -420,7 +455,7 @@ export class UIManager {
 
     // Diorama color
     if (floorData && floorData.color) {
-      el('boarding-diorama').style.background = floorData.color + '66';
+      el('boarding-diorama').style.background = floorData.color;
       el('boarding-diorama').style.color = floorData.textColor ?? 'rgba(255,255,255,0.6)';
     }
 
