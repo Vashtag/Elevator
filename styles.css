@@ -280,9 +280,10 @@ html, body {
 
 .cab-body {
   display: grid;
-  grid-template-columns: 140px 1fr 200px;
+  grid-template-columns: 156px 1fr 200px;
   min-height: 0;
   flex: 1;
+  overflow: hidden;
 }
 
 /* ── Left Wall — Panel ────────────────────── */
@@ -292,8 +293,8 @@ html, body {
   border-right: 2px solid var(--panel-border);
   display: flex;
   flex-direction: column;
-  padding: 12px 8px;
-  overflow-y: auto;
+  padding: 10px 8px;
+  overflow: hidden;      /* prevent x-clip bug from overflow-y:auto */
 }
 
 .panel-label {
@@ -301,16 +302,21 @@ html, body {
   letter-spacing: 0.3em;
   color: var(--brass-dim);
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   border-bottom: 1px solid var(--panel-border);
   padding-bottom: 6px;
+  flex-shrink: 0;
 }
 
 .panel-buttons {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* Two equal columns; total = panel inner - 6px gap */
+  grid-template-columns: repeat(2, calc(50% - 3px));
   gap: 6px;
   flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  align-content: start;
 }
 
 .panel-btn {
@@ -320,11 +326,12 @@ html, body {
   border-radius: 50%;
   color: var(--cream-dim);
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
   position: relative;
+  min-width: 0;        /* prevent grid blowout */
 }
 
 .panel-btn:hover:not(.current):not(.locked) {
@@ -399,24 +406,175 @@ html, body {
 
 .panel-info-row span { color: var(--cream); }
 
-/* ── Center — Doors & Cab Interior ──────────── */
+/* ── Center — Building Shaft ─────────────────── */
 
 .cab-center {
   display: flex;
   flex-direction: column;
+  padding: 8px 10px;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ── Building shaft (cross-section wireframe) ── */
+
+.building-shaft {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  min-height: 0;
+  border: 1px solid var(--panel-border);
+  background: rgba(0,0,0,0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left column: floor number labels */
+.shaft-left-col {
+  width: 32px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--panel-border);
+}
+
+.shaft-label-row {
+  flex: 1;
+  display: flex;
   align-items: center;
-  padding: 16px;
-  gap: 12px;
+  justify-content: flex-end;
+  padding-right: 5px;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  color: var(--cream-dim);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  letter-spacing: 0.05em;
+  min-height: 0;
+  position: relative;
+  transition: color 0.3s, background 0.3s;
+}
+
+.shaft-label-row.is-current {
+  color: var(--amber);
+  background: rgba(255,140,0,0.05);
+}
+
+/* Small tick from label to shaft */
+.shaft-label-row::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  width: 4px;
+  height: 1px;
+  background: var(--panel-border);
+}
+
+/* Center column: the elevator shaft track */
+.shaft-track-col {
+  width: 34px;
+  flex-shrink: 0;
+  position: relative;
+  background: rgba(0,0,0,0.3);
+}
+
+/* Cable lines running the length of the shaft */
+.shaft-track-col::before,
+.shaft-track-col::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 1px;
+  /* dashed cable effect */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--brass-dim) 0px,
+    var(--brass-dim) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  opacity: 0.4;
+}
+.shaft-track-col::before { left: 7px; }
+.shaft-track-col::after  { right: 7px; }
+
+/* Right column: waiting passenger indicators */
+.shaft-right-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--panel-border);
   min-width: 0;
 }
 
-.doors-wrapper {
-  width: 100%;
-  max-width: 400px;
+.shaft-waiting-row {
   flex: 1;
+  display: flex;
+  align-items: center;
+  padding-left: 6px;
+  gap: 2px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  min-height: 0;
   position: relative;
+  overflow: hidden;
+}
+
+/* Small tick from shaft to waiting */
+.shaft-waiting-row::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  width: 4px;
+  height: 1px;
+  background: var(--panel-border);
+}
+
+.shaft-wait-icon {
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+/* ── Elevator Car ────────────────────────────── */
+
+.elevator-car {
+  position: absolute;
+  left: 2px; right: 2px;
+  /* Position driven by CSS custom props set in JS */
+  top: calc(var(--shaft-idx, 0) / var(--shaft-n, 10) * 100% + 1px);
+  height: calc(100% / var(--shaft-n, 10) - 2px);
+  background: var(--cab-warm);
+  border: 1px solid var(--brass-dim);
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  transition: top 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.elevator-car.doors-open {
+  border-color: var(--amber);
+  background: var(--cab-mid);
+  box-shadow: 0 0 8px rgba(255,140,0,0.35);
+}
+
+.car-content {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1px;
+  padding: 2px;
+}
+
+.car-icon {
+  font-size: 0.5rem;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .doors-frame {
