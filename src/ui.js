@@ -68,14 +68,16 @@ export class UIManager {
       el('ind-dir').textContent = dir;
       this._updateShiftStats();
       this._renderPanel();
+      this._updateCarPosition();     // animate car to new floor (cheap, no DOM rebuild)
       this._renderCabPassengers();
-      this._updateGoButton(null);  // clear pending selection status
+      this._updateGoButton(null);
       const moveSec = Math.max(0.3, (cost ?? 1) * 0.25);
       this.audio.playMovement(moveSec);
     });
 
     engine.on('doorsOpened', ({ floor, exiting, waiting, floorData }) => {
       this._boardingFloor = floor;
+      this._updateShaftDoorState(true);  // glow the car
       this._renderBoardingScreen(floor, exiting, waiting, floorData);
       this.audio.playDing();
       setScreen('boarding');
@@ -84,15 +86,18 @@ export class UIManager {
     engine.on('doorsClosed', () => {
       setScreen('shift');
       this._boardingFloor = null;
-      this._renderPanel();          // update waiting dots after boarding
+      this._updateShaftDoorState(false);
+      this._renderPanel();
+      this._renderBuildingShaft();   // refresh waiting dots
       this._renderCabPassengers();
       this._renderManifest();
       this._updateShiftStats();
-      this._updateGoButton(null);   // reset status line
+      this._updateGoButton(null);
     });
 
     engine.on('passengerBoarded', () => {
       this._refreshBoardingScreen();
+      this._updateCarContent();      // show new passenger in shaft car
       this._renderCabPassengers();
       this._updateShiftStats();
     });
@@ -105,6 +110,7 @@ export class UIManager {
     engine.on('passengerDelivered', ({ result }) => {
       this._renderManifest();
       this._updateShiftStats();
+      this._updateCarContent();      // remove delivered passenger from car
       if (result && result.tip > 0) this.audio.playTip();
     });
 
@@ -132,6 +138,7 @@ export class UIManager {
       const name = floor === 'basement' ? 'the Basement' : `Floor ${floor}`;
       showToast(`${name} is now accessible.`, 'unlock');
       this._renderPanel();
+      this._renderBuildingShaft();   // show newly unlocked floor in shaft
     });
 
     engine.on('cardFragment', () => {
@@ -316,6 +323,9 @@ export class UIManager {
     // Panel
     this._renderPanel();
 
+    // Building shaft (full re-render for new day)
+    this._renderBuildingShaft();
+
     // Manifest
     this._renderManifest();
 
@@ -332,6 +342,90 @@ export class UIManager {
     el('info-cap').textContent = snap.capacity;
     el('info-spd').textContent = snap.speed;
     el('info-cond').textContent = snap.condition;
+  }
+
+  // ── Building shaft ────────────────────────────────────────
+
+  /**
+   * Full re-render of the building shaft wireframe.
+   * Called on day start, floor unlock, and after doorsClosed.
+   */
+  _renderBuildingShaft() {
+    const snap = this.engine.snapshot();
+    const floors = this._allKnownFloors(snap.unlockedFloors); // top→bottom
+    const N = floors.length;
+    const currentFloor = snap.floor;
+    const idx = Math.max(0, floors.indexOf(currentFloor));
+
+    // Drive elevator car position via CSS custom properties
+    const root = document.documentElement;
+    root.style.setProperty('--shaft-n', N);
+    root.style.setProperty('--shaft-idx', idx);
+
+    // Left column: floor number labels
+    const leftCol = el('shaft-left-col');
+    leftCol.innerHTML = '';
+    for (const f of floors) {
+      const row = document.createElement('div');
+      row.className = 'shaft-label-row' + (f === currentFloor ? ' is-current' : '');
+      row.textContent = floorLabel(f);
+      leftCol.appendChild(row);
+    }
+
+    // Right column: waiting passenger sprites
+    const rightCol = el('shaft-right-col');
+    rightCol.innerHTML = '';
+    for (const f of floors) {
+      const row = document.createElement('div');
+      row.className = 'shaft-waiting-row';
+      const waiting = (snap.waitingAt[f] ?? []).filter(
+        p => !p.inCab && !p.delivered && !p.abandoned
+      );
+      for (const p of waiting) {
+        const span = document.createElement('span');
+        span.className = 'shaft-wait-icon';
+        span.textContent = p.sprite;
+        span.style.color = p.color;
+        span.title = p.name;
+        row.appendChild(span);
+      }
+      rightCol.appendChild(row);
+    }
+
+    // Update car content (passengers inside)
+    this._updateCarContent();
+  }
+
+  /** Update only the elevator car position without re-rendering all floor rows */
+  _updateCarPosition() {
+    const snap = this.engine.snapshot();
+    const floors = this._allKnownFloors(snap.unlockedFloors);
+    const N = floors.length;
+    const idx = Math.max(0, floors.indexOf(snap.floor));
+    const root = document.documentElement;
+    root.style.setProperty('--shaft-n', N);
+    root.style.setProperty('--shaft-idx', idx);
+
+    // Update current-floor highlight in label column
+    document.querySelectorAll('.shaft-label-row').forEach((row, i) => {
+      row.classList.toggle('is-current', i === idx);
+    });
+  }
+
+  /** Update the passenger sprite icons rendered inside the elevator car */
+  _updateCarContent() {
+    const snap = this.engine.snapshot();
+    const carContent = el('car-content');
+    if (!carContent) return;
+    carContent.innerHTML = snap.cabPassengers.map(p =>
+      `<span class="car-icon" style="color:${p.color}" title="${p.name}">${p.sprite}</span>`
+    ).join('');
+  }
+
+  /** Toggle the elevator car's open-doors glow state */
+  _updateShaftDoorState(isOpen) {
+    const car = el('elevator-car');
+    if (car) car.classList.toggle('doors-open', isOpen);
   }
 
   _updateShiftStats() {
