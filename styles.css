@@ -719,6 +719,7 @@ html, body {
 /* ── Right Wall — Clipboard ──────────────── */
 
 .cab-right {
+  grid-column: 3;
   border-left: 2px solid var(--panel-border);
   background: var(--cab-dark);
   display: flex;
