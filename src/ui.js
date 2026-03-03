@@ -325,9 +325,8 @@ export class UIManager {
     // Clear cab
     el('cab-passengers').innerHTML = '';
 
-    // Status
-    el('floor-status').textContent = 'Select a floor on the panel to move.';
-    el('btn-go').disabled = true;
+    // Status (checks for waiting passengers at current floor)
+    this._updateGoButton(null);
 
     // Elevator info
     el('info-cap').textContent = snap.capacity;

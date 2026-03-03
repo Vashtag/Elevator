@@ -105,6 +105,28 @@ html, body {
   margin-right: auto;
 }
 
+.title-days {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.title-day-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--brass-dim);
+  background: transparent;
+}
+
+/* Subtle ambient glow animation on title */
+@keyframes title-glow {
+  0%, 100% { text-shadow: 0 0 40px rgba(198,151,63,0.5); }
+  50%       { text-shadow: 0 0 60px rgba(198,151,63,0.8), 0 0 100px rgba(198,151,63,0.3); }
+}
+
+.title-main { animation: title-glow 4s infinite; }
+
 /* ── Buttons ──────────────────────────────── */
 
 .btn-primary {
