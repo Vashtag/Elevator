@@ -280,7 +280,7 @@ html, body {
 
 .cab-body {
   display: grid;
-  grid-template-columns: 1fr 220px 200px;
+  grid-template-columns: 200px 1fr 200px;
   min-height: 0;
   flex: 1;
   overflow: hidden;
