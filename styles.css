@@ -181,8 +181,8 @@ html, body {
 .elevator-cab {
   width: 100%;
   height: 100%;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
+  display: flex;
+  flex-direction: column;
   background: var(--cab-dark);
   /* Warm ambient light from above */
   background-image:
@@ -280,7 +280,7 @@ html, body {
 
 .cab-body {
   display: grid;
-  grid-template-columns: 156px 1fr 200px;
+  grid-template-columns: 1fr 220px 200px;
   min-height: 0;
   flex: 1;
   overflow: hidden;
@@ -289,7 +289,9 @@ html, body {
 /* ── Left Wall — Panel ────────────────────── */
 
 .cab-left {
+  grid-column: 2;
   background: var(--panel-bg);
+  border-left: 2px solid var(--panel-border);
   border-right: 2px solid var(--panel-border);
   display: flex;
   flex-direction: column;
@@ -310,8 +312,8 @@ html, body {
 
 .panel-buttons {
   display: grid;
-  /* Two equal columns; total = panel inner - 6px gap */
-  grid-template-columns: repeat(2, calc(50% - 3px));
+  /* Three equal columns in the wider centre panel */
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
   flex: 1;
   overflow-y: auto;
@@ -409,6 +411,7 @@ html, body {
 /* ── Center — Building Shaft ─────────────────── */
 
 .cab-center {
+  grid-column: 1;
   display: flex;
   flex-direction: column;
   padding: 8px 10px;
@@ -424,8 +427,8 @@ html, body {
   display: flex;
   flex-direction: row;
   min-height: 0;
-  border: 1px solid var(--panel-border);
-  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--brass-dim);
+  background: var(--panel-bg);
   position: relative;
   overflow: hidden;
 }
