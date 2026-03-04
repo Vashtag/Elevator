@@ -22,7 +22,8 @@ export const ARCHETYPES = {
      * @param {boolean} ctx.secretRevealed
      */
     check(ctx) {
-      if (ctx.stopsWhileAboard > 2) {
+      const tolerance = ctx.polishedBrass ? 3 : 2;
+      if (ctx.stopsWhileAboard > tolerance) {
         return {
           met: false,
           complaint: true,

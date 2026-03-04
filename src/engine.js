@@ -483,6 +483,7 @@ export class GameEngine {
       shiftEfficiency,
       actionsLeft,
       actionsTotal,
+      polishedBrass: state.elevator.polishedBrass,
     };
 
     // Adjust for polished brass (executive tolerance)
